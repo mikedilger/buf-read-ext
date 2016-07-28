@@ -12,11 +12,11 @@ pub trait BufReadExt: BufRead {
     /// Streams all bytes to `out` until the `token` delimiter or EOF is reached.
     ///
     /// This function will continue to read (and stream) bytes from the underlying stream until the
-    /// token or end-of-file byte is found. Once found, all bytes up to (but not including) the
+    /// token or end-of-file is found. Once found, all bytes up to (but not including) the
     /// token (if found) will have been streamed to `out` and the input stream will advance past
     /// the token.
     ///
-    /// This function will return the number of bytes that were streamed to out (this will
+    /// This function will return the number of bytes that were streamed to `out` (this will
     /// exclude the count of token bytes, if the token was found), and whether or not the token
     /// was found.
     ///
@@ -73,9 +73,7 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
             if !prefix_lengths.is_empty() {
                 let largest_prefix_len = prefix_lengths[0];
 
-                // FIXME: once Vec::drain() stabilizes, use that instead
-                let drain = prefix_lengths.clone();
-                prefix_lengths.truncate(0);
+                let drain: Vec<usize> = prefix_lengths.drain(..).collect();
 
                 let mut partmatch = false;
                 for &prefix_len in &drain {
@@ -124,6 +122,7 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
                 window = buffer.len();
             }
             // Remember the largest prefix for writing later if it didn't match
+            // (we don't write it now just in case it turns out to be the token)
             let mut reserve = if !prefix_lengths.is_empty() {
                 buffer.len()
             } else {
