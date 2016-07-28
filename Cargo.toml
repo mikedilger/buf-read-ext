@@ -9,3 +9,4 @@ documentation = "https://mikedilger.github.io/buf-read-ext"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+memchr = "0.1"

@@ -5,7 +5,16 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+extern crate memchr;
+
 use std::io::{BufRead, ErrorKind, Result, Write};
+
+/// Type of end-of-line sequence
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Eol {
+    Lf,
+    CrLf
+}
 
 /// Extends any type that implements BufRead with a stream_until_token() function.
 pub trait BufReadExt: BufRead {
@@ -27,6 +36,80 @@ pub trait BufReadExt: BufRead {
     fn stream_until_token<W: Write>(&mut self, token: &[u8], out: &mut W) -> Result<(usize, bool)>
     {
         stream_until_token(self, token, out)
+    }
+
+    /// Streams all bytes to `out` until an LF or CRLF line terminating sequence is found.
+    ///
+    /// This function will continue to read (and stream) bytes from the underlying stream until
+    /// the end-of-line sequences are found (either LF or CRLF).  Once found, all bytes up to
+    /// (but not including) the end of line sequence will have been streamed to `out` and the
+    /// input stream will advance past the end of line sequence.
+    ///
+    /// This function returns the nubmer of bytes that were streamed to `out` (this will
+    /// exclude the end of line sequence characters themselves), and the type of end of line
+    /// that was found, or None if the end-of-file was reached first.
+    fn stream_line<W: Write>(&mut self, out: &mut W) -> Result<(usize, Option<Eol>)>
+    {
+        let mut read = 0;
+        let mut heldback_cr = false;
+        loop {
+
+            let (done, used, streamed, eol) = {
+                let available = match self.fill_buf() {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e)
+                };
+
+                if heldback_cr && available.len()>0 && available[0]==b'\n' {
+                    (true, 1, 0, Some(Eol::CrLf))
+                }
+                else {
+                    let mut streamed: usize = 0;
+
+                    if heldback_cr {
+                        try!(out.write_all(b"\r"));
+                        streamed += 1;
+                        heldback_cr = false;
+                    }
+
+                    match memchr::memchr(b'\n', available) {
+                        Some(i) => {
+                            if i>0 && available[i-1] == b'\r' {
+                                if i>1 { try!(out.write_all(&available[..i-1])); }
+                                streamed += i-1;
+                                (true, i+1, streamed, Some(Eol::CrLf))
+                            } else {
+                                try!(out.write_all(&available[..i]));
+                                streamed += i;
+                                (true, i+1, streamed, Some(Eol::Lf))
+                            }
+                        },
+                        None => {
+                            if available.len() < 1 {
+                                (true, available.len(), 0, None)
+                            }
+                            else if available[available.len()-1]==b'\r' {
+                                try!(out.write_all(&available[..available.len()-1]));
+                                heldback_cr = true;
+                                streamed += available.len()-1;
+                                (false, available.len(), streamed, None)
+                            } else {
+                                try!(out.write_all(&available[..]));
+                                streamed += available.len();
+                                (false, available.len(), streamed, None)
+                            }
+                        }
+                    }
+                }
+            };
+
+            self.consume(used);
+            read += streamed;
+            if done || used == 0 {
+                return Ok((read, eol));
+            }
+        }
     }
 }
 
@@ -264,4 +347,25 @@ mod tests {
         assert_eq!(buf.stream_until_token(b"barbarian", &mut v).unwrap(), (5, true));
         assert_eq!(v, b"12bar");
     }
+
+    #[test]
+    fn stream_line_test() {
+        for i in 1..20 {
+            let cursor = Cursor::new(&b"line one\nline two\r\nline three\rstill\nline four"[..]);
+            let mut buf = BufReader::with_capacity(i, cursor);
+            let mut v: Vec<u8> = Vec::new();
+            assert_eq!(buf.stream_line(&mut v).unwrap(), (8,Some(Eol::Lf)));
+            assert_eq!(v, b"line one");
+            v.truncate(0);
+            assert_eq!(buf.stream_line(&mut v).unwrap(), (8,Some(Eol::CrLf)));
+            assert_eq!(v, b"line two");
+            v.truncate(0);
+            assert_eq!(buf.stream_line(&mut v).unwrap(), (16,Some(Eol::Lf)));
+            assert_eq!(v, b"line three\rstill");
+            v.truncate(0);
+            assert_eq!(buf.stream_line(&mut v).unwrap(), (9,None));
+            assert_eq!(v, b"line four");
+        }
+    }
+
 }
