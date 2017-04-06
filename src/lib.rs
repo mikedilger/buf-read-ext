@@ -71,33 +71,41 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
             // If the buffer starts with a token suffix matching a token prefix from the end of the
             // previous buffer, then we have found a token.
             if !prefix_lengths.is_empty() {
-                let largest_prefix_len = prefix_lengths[0];
-
                 let drain: Vec<usize> = prefix_lengths.drain(..).collect();
 
-                let mut partmatch = false;
-                for &prefix_len in &drain {
+                for index in 0..drain.len() {
+                    let prefix_len = drain[index];
+
+                    let mut prefix_failed: bool = true;
+
                     // If the buffer is too small to fit an entire suffix
                     if buffer.len() < token.len() - prefix_len {
                         if buffer[..] == token[prefix_len..prefix_len + buffer.len()] {
                             // that prefix just got bigger and needs to be preserved
                             prefix_lengths.push(prefix_len + buffer.len());
-                            partmatch = true;
+                            prefix_failed = false;
                         }
                     } else {
+                        // If we find a complete suffix at the front of the buffer for this
+                        // prefix...
                         if buffer[..token.len() - prefix_len] == token[prefix_len..] {
-                            try!(out.write_all(&token[..largest_prefix_len - prefix_len]));
                             found = true;
                             used = token.len() - prefix_len;
                             break 'buffer;
                         }
                     }
-                }
 
-                if ! partmatch {
-                    // No prefix matched, so we should write the largest prefix length, since we
-                    // didn't write it when we first saw it
-                    try!(out.write_all(&token[..largest_prefix_len]));
+                    if prefix_failed {
+                        // This prefix length doesn't work.  We should write the bytes...
+                        if index == drain.len() - 1 {
+                            // ...of this prefix length
+                            try!(out.write_all(&token[..prefix_len]));
+                        } else {
+                            // ...from this prefix length to the next
+                            let next_prefix_len = drain[index+1];
+                            try!(out.write_all(&token[..prefix_len - next_prefix_len]));
+                        }
+                    }
                 }
             }
 
@@ -208,6 +216,7 @@ mod tests {
         assert_eq!(buf.stream_until_token(b"TOKEN", &mut result).unwrap(), (0, false));
         assert_eq!(result, b"");
 
+        //                          <------><------><------>
         let cursor = Cursor::new(&b"12345TOKE23456781TOKEN78"[..]);
         let mut buf = BufReader::with_capacity(8, cursor);
         let mut result: Vec<u8> = Vec::new();
@@ -251,7 +260,7 @@ mod tests {
 
     // This tests against mikedilger/formdata github issue #12
     #[test]
-    fn stream_until_token_multiple_prefix_text() {
+    fn stream_until_token_multiple_prefix_test() {
         let cursor = Cursor::new(&b"12barbarian4567"[..]);
         let mut buf = BufReader::with_capacity(8, cursor);
         let mut v: Vec<u8> = Vec::new();
@@ -263,5 +272,30 @@ mod tests {
         let mut v: Vec<u8> = Vec::new();
         assert_eq!(buf.stream_until_token(b"barbarian", &mut v).unwrap(), (5, true));
         assert_eq!(v, b"12bar");
+    }
+
+    #[test]
+    fn stream_until_token_complex_test() {
+        //                                             <-TOKEN->
+        //                          <--><--><--><--><--><--><--><-->
+        let cursor = Cursor::new(&b"A SANTA BARBARA BARBARBARIANEND"[..]);
+        let mut buf = BufReader::with_capacity(4, cursor);
+        let mut v: Vec<u8> = Vec::new();
+        assert_eq!(buf.stream_until_token(b"BARBARIAN", &mut v).unwrap(), (19, true));
+        assert_eq!(v, b"A SANTA BARBARA BAR");
+
+        /*            prefix lens:   out:
+        "A SA"        []             "A SA"
+        "NTA "        []             "NTA "
+        "BARB"        [4, 1]         ""
+        "ARA "        []             "BARB"  "ARA "
+        "BARB"        [4, 1]         ""
+        "ARBA"        [5, 2]         "BAR"
+        "RIAN"
+         */
+
+        v.truncate(0);
+        assert_eq!(buf.stream_until_token(b"BARBARIAN", &mut v).unwrap(), (3, false));
+        assert_eq!(v, b"END");
     }
 }
