@@ -5,7 +5,7 @@ description = "Trait extending anything that implements BufRead with stream_unti
 authors = ["Mike Dilger <mike@optcomp.nz>"]
 readme = "README.md"
 repository = "https://github.com/mikedilger/buf-read-ext"
-documentation = "https://mikedilger.github.io/buf-read-ext"
+documentation = "https://docs.rs/buf-read-ext"
 license = "MIT OR Apache-2.0"
 
 [features]
