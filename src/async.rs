@@ -10,6 +10,17 @@ use std::io::{BufRead, Error, ErrorKind};
 use tokio_io::{AsyncRead, AsyncWrite};
 use futures::{Poll, Future, Async};
 
+/// Returns a future that streams all bytes to `out` until the `token` delimiter or EOF is
+/// reached.
+///
+/// This future will continue to read (and stream) bytes from the underlying stream until the
+/// token or end-of-file is found. Once found, all bytes up to (but not including) the
+/// token (if found) will have been streamed to `out` and the input stream will advance past
+/// the token.
+///
+/// This function will return an `AsyncStreamUntilTokenOutput` which includes the number of
+/// bytes that were streamed to `out` (this will exclude the count of token bytes, if the token
+/// was found), and whether or not the token was found.
 pub fn async_stream_until_token<R, W>(stream: R, token: &[u8], out: W)
                                       -> AsyncStreamUntilToken<R, W>
     where R: AsyncRead + BufRead, W: AsyncWrite
@@ -21,12 +32,16 @@ pub fn async_stream_until_token<R, W>(stream: R, token: &[u8], out: W)
     }
 }
 
+/// Future associated with async_stream_until_token().  Refer to that functions
+/// documentation
 pub struct AsyncStreamUntilToken<R, W> {
     stream: Option<R>,
     token: Vec<u8>,
     out: Option<W>,
 }
 
+/// A completed AsyncStreamUntilToken future yields this value, which returns the streams,
+/// as well as the number of bytes streamed and whether or not the token was found.
 pub struct AsyncStreamUntilTokenOutput<R, W> {
     pub stream: R,
     pub out: W,
