@@ -12,6 +12,11 @@ extern crate tokio_io;
 
 use std::io::{BufRead, ErrorKind, Result, Write};
 
+#[cfg(feature = "async")]
+mod async;
+#[cfg(feature = "async")]
+pub use self::async::*;
+
 /// Extends any type that implements BufRead with a stream_until_token() function.
 pub trait BufReadExt: BufRead {
     /// Streams all bytes to `out` until the `token` delimiter or EOF is reached.
