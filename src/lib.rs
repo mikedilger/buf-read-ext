@@ -43,7 +43,7 @@ pub trait BufReadExt: BufRead {
 // Implement BufReadExt for everything that implements BufRead.
 impl<T: BufRead> BufReadExt for T { }
 
-fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8], mut out: &mut W)
+fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8], out: &mut W)
                                                      -> Result<(usize, bool)>
 {
     let mut read = 0;
