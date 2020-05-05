@@ -1,0 +1,10 @@
+var ALIASES = {};
+ALIASES["buf_read_ext"] = {};
+ALIASES["byteorder"] = {};
+ALIASES["bytes"] = {};
+ALIASES["cfg_if"] = {};
+ALIASES["futures"] = {};
+ALIASES["iovec"] = {};
+ALIASES["libc"] = {};
+ALIASES["log"] = {};
+ALIASES["tokio_io"] = {};
