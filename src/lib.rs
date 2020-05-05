@@ -31,14 +31,14 @@ pub trait BufReadExt: BufRead {
     /// return any errors returned by `fill_buf`.
     fn stream_until_token<W: Write>(&mut self, token: &[u8], out: &mut W) -> Result<(usize, bool)>
     {
-        stream_until_token(self, token, out)
+        _stream_until_token(self, token, out)
     }
 }
 
 // Implement BufReadExt for everything that implements BufRead.
 impl<T: BufRead> BufReadExt for T { }
 
-fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8], out: &mut W)
+fn _stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8], out: &mut W)
                                                      -> Result<(usize, bool)>
 {
     let mut read = 0;
