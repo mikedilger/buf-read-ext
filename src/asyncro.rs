@@ -60,7 +60,7 @@ impl<R, W> Future for AsyncStreamUntilToken<R, W>
             panic!("Polled AsyncStreamUntilToken after it was done.");
         }
 
-        match ::stream_until_token(self.stream.as_mut().unwrap(),
+        match crate::stream_until_token(self.stream.as_mut().unwrap(),
                                    &*self.token,
                                    self.out.as_mut().unwrap())
         {

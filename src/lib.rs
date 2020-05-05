@@ -13,9 +13,9 @@ extern crate tokio_io;
 use std::io::{BufRead, ErrorKind, Result, Write};
 
 #[cfg(feature = "async")]
-mod async;
+mod asyncro;
 #[cfg(feature = "async")]
-pub use self::async::*;
+pub use self::asyncro::*;
 
 /// Extends any type that implements BufRead with a stream_until_token() function.
 pub trait BufReadExt: BufRead {
@@ -109,11 +109,11 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
                         // This prefix length doesn't work.  We should write the bytes...
                         if index == drain.len() - 1 {
                             // ...of this prefix length
-                            try!(out.write_all(&token[..prefix_len]));
+                            out.write_all(&token[..prefix_len])?;
                         } else {
                             // ...from this prefix length to the next
                             let next_prefix_len = drain[index+1];
-                            try!(out.write_all(&token[..prefix_len - next_prefix_len]));
+                            out.write_all(&token[..prefix_len - next_prefix_len])?;
                         }
                     }
                 }
@@ -128,7 +128,7 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
                 .next();
 
             if let Some(index) = index {
-                try!(out.write_all(&buffer[..index]));
+                out.write_all(&buffer[..index])?;
                 found = true;
                 used = index + token.len();
                 break 'buffer;
@@ -155,7 +155,7 @@ fn stream_until_token<R: BufRead + ?Sized, W: Write>(stream: &mut R, token: &[u8
                 prefix_lengths.push(prefix)
             }
 
-            try!(out.write_all(&buffer[..buffer.len()-reserve]));
+            out.write_all(&buffer[..buffer.len()-reserve])?;
             used = buffer.len();
         }
 
