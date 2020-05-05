@@ -5,11 +5,6 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-#[cfg(feature = "async")]
-extern crate futures;
-#[cfg(feature = "async")]
-extern crate tokio_io;
-
 use std::io::{BufRead, ErrorKind, Result, Write};
 
 #[cfg(feature = "async")]
