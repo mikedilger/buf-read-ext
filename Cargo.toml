@@ -1,6 +1,6 @@
 [package]
 name = "buf-read-ext"
-version = "0.3.0"
+version = "0.4.0"
 description = "Trait extending anything that implements BufRead with stream_until_token()"
 authors = ["Mike Dilger <mike@optcomp.nz>"]
 readme = "README.md"
