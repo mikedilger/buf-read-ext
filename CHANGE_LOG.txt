@@ -1,0 +1,20 @@
+
+Version 0.4.0
+
+	* BREAKING CHANGE: Removed async code. This code never worked (it blocked).
+          If you depend on this code and it seems to work for you, stick with 0.3.0,
+          but beware that futures may block and not return right away, rather than
+          behaving like proper async code should.
+
+Version 0.3.0
+
+	* ADDED optional async code
+
+Version 0.2.0
+
+	* stream_until_token() now returns whether or not the token was found.
+        * stream_until_token() no longer counts the bytes of the token itself.
+
+Version 0.1.0
+
+	* Initial version.
